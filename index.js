@@ -149,20 +149,23 @@ class ChatGPTAPIAutomation {
 // Main execution with multi-threading support
 async function main() {
   const automation = new ChatGPTAPIAutomation();
-  
+
   // Number of concurrent requests
   const concurrentRequests = parseInt(process.env.CONCURRENT_REQUESTS || '100');
   // Total number of codes to test
   const totalCodes = parseInt(process.env.TOTAL_CODES || '1000000');
-  
+
   console.log('🤖 ChatGPT API Automation Started');
   console.log('=' .repeat(50));
   console.log(`🔄 Testing ${totalCodes} promo codes with ${concurrentRequests} concurrent requests`);
   console.log('=' .repeat(50));
-  
+
   let successCount = 0;
   let eligibleCount = 0;
   let failureCount = 0;
+  let testedCount = 0;
+  const maxTestsBeforeFallback = 5000;
+  const fallbackCode = 'RUGBMBTFVNCDY3PV';
 
   // Generate all promo codes
   const promoCodes = [];
@@ -174,16 +177,17 @@ async function main() {
   for (let i = 0; i < promoCodes.length; i += concurrentRequests) {
     const batch = promoCodes.slice(i, i + concurrentRequests);
     console.log(`\n📦 Processing batch ${Math.floor(i / concurrentRequests) + 1}/${Math.ceil(promoCodes.length / concurrentRequests)}`);
-    
+
     // Execute batch requests in parallel
     const batchPromises = batch.map(code => automation.getPromotionMetadata(code));
     const results = await Promise.all(batchPromises);
-    
+
     // Process results
     results.forEach(result => {
+      testedCount++;
       if (result.success) {
         successCount++;
-                
+
         if (automation.isEligible(result)) {
           eligibleCount++;
           console.log(`🎉 ELIGIBLE: ${result.promoCode}`);
@@ -194,7 +198,33 @@ async function main() {
         console.log(`❌ [${result.promoCode}] Error: ${result.error}`);
       }
     });
-    
+
+    // Check if we've tested 5000 codes without finding any eligible
+    if (testedCount >= maxTestsBeforeFallback && eligibleCount === 0) {
+      console.log(`\n⚠️  Tested ${testedCount} codes without finding any ELIGIBLE`);
+      console.log(`🔄 Trying fallback code: ${fallbackCode}`);
+
+      const fallbackResult = await automation.getPromotionMetadata(fallbackCode);
+      testedCount++;
+
+      if (fallbackResult.success) {
+        successCount++;
+        if (automation.isEligible(fallbackResult)) {
+          eligibleCount++;
+          console.log(`🎉 ELIGIBLE (FALLBACK): ${fallbackCode}`);
+          automation.saveEligibleCode(fallbackCode);
+        } else {
+          console.log(`❌ Fallback code not eligible: ${fallbackCode}`);
+        }
+      } else {
+        failureCount++;
+        console.log(`❌ Fallback code error: ${fallbackResult.error}`);
+      }
+
+      // Stop after trying fallback
+      break;
+    }
+
     // Add small delay between batches to avoid rate limiting
     if (i + concurrentRequests < promoCodes.length) {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -206,10 +236,11 @@ async function main() {
   console.log(`✅ Successful requests: ${successCount}`);
   console.log(`🎉 Eligible codes found: ${eligibleCount}`);
   console.log(`❌ Failed requests: ${failureCount}`);
+  console.log(`📝 Total codes tested: ${testedCount}`);
   console.log(`📁 Results saved to: ${automation.resultsFile}`);
   console.log('=' .repeat(50));
   console.log('🏁 Automation completed');
-  
+
   process.exit(eligibleCount > 0 ? 0 : 1);
 }
 
