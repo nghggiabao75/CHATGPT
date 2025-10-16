@@ -151,7 +151,7 @@ async function main() {
   const automation = new ChatGPTAPIAutomation();
   
   // Number of concurrent requests
-  const concurrentRequests = parseInt(process.env.CONCURRENT_REQUESTS || '10');
+  const concurrentRequests = parseInt(process.env.CONCURRENT_REQUESTS || '100');
   // Total number of codes to test
   const totalCodes = parseInt(process.env.TOTAL_CODES || '1000000');
   
@@ -183,8 +183,7 @@ async function main() {
     results.forEach(result => {
       if (result.success) {
         successCount++;
-        console.log(`✅ [${result.promoCode}] Status: ${result.status}`);
-        
+                
         if (automation.isEligible(result)) {
           eligibleCount++;
           console.log(`🎉 ELIGIBLE: ${result.promoCode}`);
