@@ -115,6 +115,8 @@ class ChatGPTAPIAutomation {
    * @returns {boolean} True if is_eligible is true
    */
   isEligible(response) {
+    console.log("response", response);
+
     return response.data && response.data.is_eligible === true;
   }
 
