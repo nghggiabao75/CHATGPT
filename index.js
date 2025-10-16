@@ -164,7 +164,7 @@ async function main() {
   let eligibleCount = 0;
   let failureCount = 0;
   let testedCount = 0;
-  const maxTestsBeforeFallback = 5000;
+  const maxTestsBeforeFallback = 2500;
   const fallbackCode = 'RUGBMBTFVNCDY3PV';
 
   // Generate all promo codes
@@ -220,9 +220,6 @@ async function main() {
         failureCount++;
         console.log(`❌ Fallback code error: ${fallbackResult.error}`);
       }
-
-      // Stop after trying fallback
-      break;
     }
 
     // Add small delay between batches to avoid rate limiting
