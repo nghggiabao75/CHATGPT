@@ -115,8 +115,6 @@ class ChatGPTAPIAutomation {
    * @returns {boolean} True if is_eligible is true
    */
   isEligible(response) {
-    console.log("response", response);
-
     return response.data && response.data.is_eligible === true;
   }
 
@@ -178,7 +176,7 @@ async function main() {
   // Process codes in batches (multi-threading simulation)
   for (let i = 0; i < promoCodes.length; i += concurrentRequests) {
     const batch = promoCodes.slice(i, i + concurrentRequests);
-    console.log(`\n📦 Processing batch ${Math.floor(i / concurrentRequests) + 1}/${Math.ceil(promoCodes.length / concurrentRequests)}`);
+    console.log(`\n📦 Processing batch ${Math.floor(i / concurrentRequests) + 1}/${Math.ceil(promoCodes.length / concurrentRequests)} - ${successCount} successCount`);
 
     // Execute batch requests in parallel
     const batchPromises = batch.map(code => automation.getPromotionMetadata(code));
@@ -201,32 +199,9 @@ async function main() {
       }
     });
 
-    // Check if we've tested 5000 codes without finding any eligible
-    if (testedCount >= maxTestsBeforeFallback && eligibleCount === 0) {
-      console.log(`\n⚠️  Tested ${testedCount} codes without finding any ELIGIBLE`);
-      console.log(`🔄 Trying fallback code: ${fallbackCode}`);
-
-      const fallbackResult = await automation.getPromotionMetadata(fallbackCode);
-      testedCount++;
-
-      if (fallbackResult.success) {
-        successCount++;
-        if (automation.isEligible(fallbackResult)) {
-          eligibleCount++;
-          console.log(`🎉 ELIGIBLE (FALLBACK): ${fallbackCode}`);
-          automation.saveEligibleCode(fallbackCode);
-        } else {
-          console.log(`❌ Fallback code not eligible: ${fallbackCode}`);
-        }
-      } else {
-        failureCount++;
-        console.log(`❌ Fallback code error: ${fallbackResult.error}`);
-      }
-    }
-
     // Add small delay between batches to avoid rate limiting
     if (i + concurrentRequests < promoCodes.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
